@@ -1,235 +1,224 @@
-# Mobile App Release Workflow & Versioning Guide
+# Mobile App Release: Standard Operating Procedure (SOP)
 
-**Document Version:** 1.0
+**Document Version:** 1.2
 **Last Updated:** May 22, 2025
 
-## 1. Introduction
+## 1. Overview
 
-This document outlines the standardized release workflow and versioning conventions for our mobile application. Adhering to this process will help ensure smooth, predictable, and high-quality releases.
+### 1.1. Purpose
+This SOP provides step-by-step instructions for releasing new versions and hotfixes for the mobile application. Follow these procedures precisely.
 
-### 1.1. Versioning Convention
+### 1.2. Versioning Convention
+* **Format:** `MAJOR.MINOR.PATCH+BUILD_NUMBER` (e.g., `1.0.7+73`)
+* **`MAJOR`**: Breaking changes / significant new features.
+* **`MINOR`**: New, backward-compatible features.
+* **`PATCH`**: Backward-compatible bug fixes.
+* **`+BUILD_NUMBER`**: Unique, incrementing integer for each store/test build.
+    * Android: `versionCode`
+    * iOS: `CFBundleVersion` (Build)
 
-We use a modified Semantic Versioning scheme combined with a build number:
+### 1.3. Key Branches
+* **`main`**: Production code.
+* **`develop`**: Current development integration.
+* **`release/<version>`**: Release preparation (e.g., `release/1.2.0`).
+* **`hotfix/<fix-or-version>`**: Urgent production fixes.
 
-**Format:** `MAJOR.MINOR.PATCH+BUILD_NUMBER`
-* **`MAJOR`** (e.g., `1`.x.x): Incremented for significant new features or breaking changes that might affect the core user experience or require data migration.
-* **`MINOR`** (e.g., x.`1`.x): Incremented when new, backward-compatible functionality is added.
-* **`PATCH`** (e.g., x.x.`7`): Incremented for backward-compatible bug fixes.
-* **`+BUILD_NUMBER`** (e.g., `+73`): A unique, always-incrementing integer for every build submitted to app stores or distributed for testing.
-    * **Android:** This corresponds to `versionCode`.
-    * **iOS:** This corresponds to `CFBundleVersion` (Build).
+### 1.4. Core Requirements
+* **Pull Requests (PRs) & Code Reviews**: Mandatory for merges to `develop`, `main`, `release/*`, `hotfix/*`.
+* **CI/CD**: All automated tests must pass before merging.
+* **Changelog**: Update `CHANGELOG.md` for every release.
 
-**Example:** `1.0.7+73` (Version Name: 1.0.7, Build Number: 73)
+---
+---
 
-### 1.2. Branching Strategy Overview
+## 2. Standard Release Procedure
 
-We follow a GitFlow-inspired model:
-* **`main`**: Production-released code. Always stable.
-* **`develop`**: Main integration branch for ongoing development.
-* **`feature/<feature-name>`**: For developing new features.
-* **`release/<version-name>`**: For preparing a release (e.g., `release/1.2.0`).
-* **`hotfix/<fix-description-or-version>`**: For urgent production fixes.
-
-### 1.3. Core Principles
-* **Pull Requests (PRs)**: All merges into `develop` and `main` (and `release/*`, `hotfix/*`) must be done via PRs.
-* **Code Reviews**: PRs require at least one approval from another team member.
-* **CI/CD**: Automated tests and builds should be integrated into the workflow.
-* **Changelog**: Maintain a `CHANGELOG.md`.
+**Use this procedure for:** Planned Major, Minor, or Patch releases.
+**Example Scenario:** Releasing version `1.2.0`. Current production is `1.1.5+60`. Initial build for this release branch will be `1.2.0+61`.
 
 ---
 
-## 2. Standard Release Workflow (Minor/Major/Patch)
+### Stage 1: Preparation & Branching
 
-This process is for planned releases that include new features, improvements, or non-critical bug fixes. Let's assume we are releasing version `1.2.0`. The current production version is `1.1.5+60`.
-
-**Key Roles:**
-* **Release Lead:** Person responsible for coordinating the release.
-* **Development Team:** Developers contributing features and fixes.
-* **QA Team:** Testers verifying the release candidate.
-
----
-
-**Phase 1: Feature Development & Integration**
-
-1.  **Feature Branches (`feature/*`)**:
-    * Developers create feature branches from `develop`:
+1.  **Verify `develop` Branch Readiness:**
+    * Confirm all planned features for this release are merged into `develop`.
+    * Ensure `develop` is stable and all CI checks are passing.
+2.  **Announce Feature Freeze (Release Lead):**
+    * Communicate that `develop` is now feature-frozen for version `1.2.0`.
+    * Only critical bug fixes *for this specific release* may be merged to `develop` before branching.
+3.  **Create `release` Branch from `develop`:**
+    ```bash
+    git checkout develop
+    git pull origin develop
+    git checkout -b release/1.2.0
+    git push origin release/1.2.0
+    ```
+    * *Note: `develop` can now accept features for the *next* release cycle.*
+4.  **Bump Version on `release/1.2.0`:**
+    * Update app version to `1.2.0` and set initial `+BUILD_NUMBER` (e.g., `+61`).
+    * Modify files: `pubspec.yaml`, Android `build.gradle`, iOS `Info.plist`.
+    * Commit and push:
         ```bash
-        git checkout develop
-        git pull origin develop
-        git checkout -b feature/new-user-profile
-        ```
-    * Develop features, commit changes.
-    * Regularly sync with `develop`:
-        ```bash
-        git pull origin develop # Or git rebase develop
-        ```
-2.  **Merge Features to `develop`**:
-    * Once a feature is complete and tested locally, create a PR from `feature/new-user-profile` to `develop`.
-    * After code review and CI checks pass, merge the PR.
-    * Delete the feature branch.
-
----
-
-**Phase 2: Release Preparation (Example: Releasing `1.2.0`)**
-
-1.  **Feature Freeze on `develop`**:
-    * The Release Lead announces a feature freeze for version `1.2.0`. No new features are merged into `develop` for this release. Only bug fixes relevant to the upcoming release are allowed.
-2.  **Create `release` Branch**:
-    * The Release Lead (or designated person) creates the release branch from `develop`:
-        ```bash
-        git checkout develop
-        git pull origin develop
-        git checkout -b release/1.2.0
+        git add . # Stage all changes
+        git commit -m "chore: Bump version to 1.2.0+61 for release"
         git push origin release/1.2.0
         ```
-    * From this point, `develop` is open for features intended for *future* releases (e.g., `1.3.0`).
-3.  **On the `release/1.2.0` Branch**:
-    * **Bump Version Number**:
-        * Update the version name to `1.2.0` and assign a new `BUILD_NUMBER` (e.g., `+61` if the last build was `+60`).
-        * Modify `pubspec.yaml` (Flutter), `build.gradle` (Android), `Info.plist` (iOS).
-        * Example commit message: `chore: Bump version to 1.2.0+61 for release`
-        ```bash
-        # Example: git commit -am "chore: Bump version to 1.2.0+61 for release"
-        # git push origin release/1.2.0
-        ```
-    * **Stabilization & QA**:
-        * QA team tests builds from the `release/1.2.0` branch.
-        * Any bugs found are fixed directly on `release/1.2.0`. Each fix should be a separate commit.
-        * Example commit message: `fix: Resolve crash on settings screen (release/1.2.0)`
-    * **Update `CHANGELOG.md`**:
-        * Document all new features, improvements, and bug fixes included in this release.
-        * Commit the updated changelog.
-        * Example commit message: `docs: Update CHANGELOG for version 1.2.0`
-    * **Build Release Candidates (RCs)**:
-        * Generate builds (e.g., `1.2.0+61`, `1.2.0+62` if fixes are made) from `release/1.2.0` for internal testing, TestFlight, Google Play Internal/Closed Testing, or Firebase App Distribution.
-        * Each RC build should have an incremented `BUILD_NUMBER`.
 
 ---
 
-**Phase 3: Production Release**
+### Stage 2: Stabilization & QA (on `release/1.2.0`)
 
-1.  **Final Approval**:
-    * Once QA confirms the release candidate (e.g., `1.2.0+65`) is stable and ready for production.
-2.  **Merge `release/1.2.0` to `main`**:
-    * The Release Lead creates a PR from `release/1.2.0` to `main`.
-    * **Crucial Review**: This PR should be carefully reviewed, as `main` represents production code.
-    * After approval and passing CI checks, merge the PR.
+1.  **Build & Distribute for QA:**
+    * Generate a build from `release/1.2.0` (e.g., `1.2.0+61`).
+    * Distribute to QA via TestFlight, Google Play Internal Testing, Firebase App Distribution, etc.
+2.  **QA Testing & Bug Fixing:**
+    * QA Team: Test the build thoroughly. Report bugs.
+    * Developers: Fix reported bugs directly on the `release/1.2.0` branch.
+        * Commit each fix: `fix: Description of fix (release/1.2.0)`
+        * For each new build provided to QA from this branch (after fixes), **increment the `+BUILD_NUMBER`** (e.g., `1.2.0+62`, then `1.2.0+63`). Update version files, commit, and push.
+3.  **Update `CHANGELOG.md`:**
+    * Document all new features, improvements, and bug fixes included in `1.2.0`.
+    * Commit and push:
         ```bash
-        # (Ensure local main is up-to-date after PR merge via GitHub UI)
+        git add CHANGELOG.md
+        git commit -m "docs: Update CHANGELOG for version 1.2.0"
+        git push origin release/1.2.0
+        ```
+4.  **Obtain Final QA Sign-off:**
+    * QA Team: Provide official approval for a specific Release Candidate build (e.g., `1.2.0+65`). Note this final `+BUILD_NUMBER`.
+
+---
+
+### Stage 3: Production Merge & Tagging
+
+1.  **Create PR: `release/1.2.0` to `main`:**
+    * Release Lead: Initiate the Pull Request.
+    * **Action**: Team conducts a final, thorough review. Ensure all CI checks pass.
+2.  **Merge PR to `main`:**
+    * After approval, merge the PR.
+3.  **Tag `main` for Release:**
+    * After the merge is complete on `main`:
+        ```bash
         git checkout main
         git pull origin main
-        ```
-3.  **Tag `main`**:
-    * Create an annotated tag on `main` for the exact release commit. The tag should match the version name.
-        ```bash
+        # Use the final QA-approved +BUILD_NUMBER in the tag message
         git tag -a v1.2.0 -m "Release version 1.2.0 (Build +65)"
-        git push origin v1.2.0 # Push the specific tag
-        # Or git push origin --tags # Push all local tags (use with caution)
+        git push origin v1.2.0
         ```
-    * The build number in the tag message (`+65`) is the final build number that will be submitted to the stores.
-4.  **Merge `release/1.2.0` back to `develop`**:
-    * This ensures any fixes or version bumps made on the `release` branch are incorporated back into `develop`.
-    * Create a PR from `release/1.2.0` to `develop`.
-    * Review and merge.
-        ```bash
-        # (Ensure local develop is up-to-date after PR merge via GitHub UI)
-        git checkout develop
-        git pull origin develop
-        ```
-5.  **(Optional) Delete `release` Branch**:
-    * Once merged to `main` and `develop`, the `release/1.2.0` branch can be deleted.
-        ```bash
-        git branch -d release/1.2.0
-        git push origin --delete release/1.2.0
-        ```
+4.  **Create PR: `release/1.2.0` to `develop`:**
+    * Release Lead: Initiate Pull Request to merge `release/1.2.0` back into `develop`.
+    * **Action**: Review and merge to ensure all fixes/updates are in `develop`.
+5.  **(Optional) Delete `release` Branch:**
+    ```bash
+    git branch -d release/1.2.0
+    git push origin --delete release/1.2.0
+    ```
 
 ---
 
-**Phase 4: Store Submission & Post-Release**
+### Stage 4: Deployment & Post-Release
 
-1.  **Build for Production**:
-    * Generate the final production build from the tagged commit (`v1.2.0`) on the `main` branch. This build will have the version `1.2.0+65`.
-2.  **Submit to App Stores**:
-    * Upload the build to Google Play Console and App Store Connect.
-    * Complete store listing information, rollout percentages, etc.
-3.  **Monitor Release**:
-    * Track crash reports (Firebase Crashlytics, Sentry), analytics, and user feedback.
-4.  **GitHub Release**:
-    * Navigate to your repository on GitHub.
-    * Go to "Releases" and "Draft a new release".
-    * Choose the tag you created (e.g., `v1.2.0`).
-    * Title the release (e.g., `Version 1.2.0`).
-    * Copy content from `CHANGELOG.md` into the release description.
-    * (Optional) Attach build artifacts (e.g., `.apk`, `.ipa` if not directly submitted from CI).
+1.  **Build for Production:**
+    * Generate the final production app package from the tagged commit (`v1.2.0`) on `main`. This build **must** use the final version name and build number (e.g., `1.2.0+65`).
+2.  **Submit to App Stores:**
+    * Upload the build to Google Play Console & App Store Connect.
+    * Complete store listing information and initiate rollout.
+3.  **Create GitHub Release:**
+    * Navigate to your repository on GitHub > "Releases" > "Draft a new release".
+    * **Choose tag:** `v1.2.0`.
+    * **Release title:** `Version 1.2.0`.
+    * **Description:** Copy relevant content from `CHANGELOG.md`.
     * Publish the release.
+4.  **Monitor Production:**
+    * Track crash reports, analytics, and user feedback closely.
+
+---
+---
+
+## 3. Hotfix Procedure
+
+**Use this procedure for:** Urgent fixes to critical bugs in the current production version.
+**Example Scenario:** Production is `v1.2.0+65`. A critical bug needs immediate fixing. New hotfix version will be `1.2.1+66`.
 
 ---
 
-## 3. Hotfix Release Workflow
+### Stage 1: Hotfix Branch & Implementation
 
-This process is for addressing critical bugs in a live production version that cannot wait for the next standard release. Let's assume production is `v1.2.0+65` and a critical bug is found. We need to release `v1.2.1`.
+1.  **Identify Production Tag:**
+    * Confirm the exact tag of the live production version (e.g., `v1.2.0`).
+2.  **Create `hotfix` Branch from Production Tag on `main`:**
+    ```bash
+    git checkout main
+    git pull origin main
+    # Branch from the specific production tag (e.g., v1.2.0)
+    git checkout -b hotfix/1.2.1-critical-login v1.2.0
+    git push origin hotfix/1.2.1-critical-login
+    ```
+3.  **Implement the Fix on `hotfix/1.2.1-critical-login`:**
+    * Apply code changes to resolve the critical bug.
+    * Commit the fix: `fix: Critical - Description of fix`
+4.  **Bump Version on `hotfix/1.2.1-critical-login`:**
+    * Update app version to `1.2.1` (increment PATCH) and set new `+BUILD_NUMBER` (e.g., `+66`).
+    * Modify files: `pubspec.yaml`, Android `build.gradle`, iOS `Info.plist`.
+    * Commit and push: `chore: Bump version to 1.2.1+66 for hotfix`
+5.  **Update `CHANGELOG.md` on `hotfix/1.2.1-critical-login`:**
+    * Document the hotfix. Commit and push.
+6.  **Thoroughly Test Hotfix Build:**
+    * QA Team: Test builds from `hotfix/1.2.1-critical-login` (e.g., `1.2.1+66`). Focus on the fix and regression.
+7.  **Obtain QA Sign-off for Hotfix:**
+    * QA Team: Provide official approval for the hotfix build.
 
-1.  **Create `hotfix` Branch from `main`**:
-    * Branch from the *tag* of the version you are hotfixing on `main`.
-        ```bash
-        git checkout main
-        git pull origin main # Ensure main is up-to-date
-        git checkout -b hotfix/1.2.1-critical-login v1.2.0 # Branch from the v1.2.0 tag
-        git push origin hotfix/1.2.1-critical-login
-        ```
-2.  **On the `hotfix/1.2.1-critical-login` Branch**:
-    * **Implement the Fix**: Make the necessary code changes to fix the critical bug. Commit the fix.
-        * Example commit message: `fix: Critical - Resolve login failure for existing users`
-    * **Bump Version Number**:
-        * Update the version name to `1.2.1` (increment PATCH).
-        * Assign a new, incremented `BUILD_NUMBER` (e.g., `+66`).
-        * Modify `pubspec.yaml`, `build.gradle`, `Info.plist`.
-        * Example commit message: `chore: Bump version to 1.2.1+66 for hotfix`
-    * **Thorough Testing**: Test this specific fix extensively.
-    * **Update `CHANGELOG.md`**: Document the hotfix.
-3.  **Merge `hotfix` to `main`**:
-    * Create a PR from `hotfix/1.2.1-critical-login` to `main`.
-    * **Urgent & Careful Review**: This is critical. Review thoroughly.
-    * After approval and CI, merge the PR.
+---
+
+### Stage 2: Merge & Release Hotfix
+
+1.  **Create PR: `hotfix/1.2.1-critical-login` to `main`:**
+    * Initiate Pull Request.
+    * **Action**: Conduct an urgent but meticulous review. Ensure CI passes.
+2.  **Merge PR to `main`:**
+    * After approval, merge the PR.
+3.  **Tag `main` for Hotfix Release:**
+    * After the merge is complete on `main`:
         ```bash
         git checkout main
         git pull origin main
-        ```
-4.  **Tag `main` for Hotfix Release**:
-    * Tag the new commit on `main`.
-        ```bash
-        git tag -a v1.2.1 -m "Hotfix release version 1.2.1 (Build +66) - Fixes critical login issue"
+        git tag -a v1.2.1 -m "Hotfix release version 1.2.1 (Build +66) - Fixes [brief issue description]"
         git push origin v1.2.1
         ```
-5.  **Merge `hotfix` back to `develop`**:
-    * Ensure the fix is also in the main development line.
-    * Create a PR from `hotfix/1.2.1-critical-login` to `develop`. Review and merge.
-        ```bash
-        git checkout develop
-        git pull origin develop
-        ```
-6.  **Merge `hotfix` into Active `release/*` Branch (if any)**:
-    * If there's an active `release/*` branch (e.g., `release/1.3.0` was in progress), the hotfix also needs to be merged into it to prevent regression. Create a PR from `hotfix/1.2.1-critical-login` to `release/active-release-branch`.
-7.  **(Optional) Delete `hotfix` Branch**:
+4.  **Create PR: `hotfix/1.2.1-critical-login` to `develop`:**
+    * Initiate Pull Request to merge the hotfix into `develop`.
+    * **Action**: Review and merge.
+5.  **Merge Hotfix into any Active `release/*` Branch (If Applicable):**
+    * If a standard release (e.g., `release/1.3.0`) is in progress, create a PR from `hotfix/1.2.1-critical-login` to that `release/*` branch. Review and merge.
+6.  **(Optional) Delete `hotfix` Branch:**
     ```bash
     git branch -d hotfix/1.2.1-critical-login
     git push origin --delete hotfix/1.2.1-critical-login
     ```
-8.  **Deploy Hotfix**:
-    * Build from the tagged commit (`v1.2.1`) on `main`.
-    * Submit to app stores (often as an expedited release if the platform supports it).
-    * Create a GitHub Release for `v1.2.1`.
 
 ---
 
-## 4. Appendix: Build Number Management
+### Stage 3: Deploy & Monitor Hotfix
 
-* The `BUILD_NUMBER` **must** be unique and higher than any previously submitted build number for that platform.
-* **Strategy for `BUILD_NUMBER`**:
-    * **Simple Increment**: The easiest is to simply increment it by 1 for every build intended for testing or store submission (e.g., `+61`, `+62`, `+63`).
-    * **CI/CD Driven**: Your CI/CD system can often manage this, pulling the latest build number from the store or a central counter and incrementing it.
-* Ensure your build scripts correctly pick up and apply the version name and build number to the app artifacts.
+1.  **Build Hotfix for Production:**
+    * Generate the final production app package from the tagged commit (`v1.2.1`) on `main`. This build will be `1.2.1+66`.
+2.  **Submit to App Stores (Expedited):**
+    * Upload the build. Request expedited review if available and necessary.
+3.  **Create GitHub Release for Hotfix:**
+    * Follow procedure in Standard Release (Stage 4, Step 3) for `v1.2.1`.
+4.  **Monitor Production Closely:**
+    * Track crash reports and feedback specific to the hotfix.
 
 ---
+---
 
-This document serves as a living guide. Please suggest improvements or clarifications as our team and processes evolve.
+## 4. Appendix
+
+### 4.1. Build Number (`+BUILD_NUMBER`)
+* **MUST** be unique and greater than any previous build for that platform.
+* **MUST** be incremented for every new build sent to QA from a `release/*` or `hotfix/*` branch, and for the final store submission.
+* CI/CD can help automate incrementing.
+
+### 4.2. Document Maintenance
+* This SOP is a living document. Propose updates via PRs to this document as processes evolve.
+
